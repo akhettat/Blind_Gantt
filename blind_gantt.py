@@ -30,7 +30,7 @@ excel_file_path = 'taches_et_jalons.xlsx'  # Remplacer par le chemin du fichier 
 try:
     # Lire les données depuis le fichier Excel
     # Utiliser le moteur openpyxl pour éviter les problèmes de dépendances
-    df = pd.read_excel(excel_file_path, engine='openpyxl')
+    df = pd.read_excel(excel_file_path, engine='openpyxl', sheet_name= 'Planning')
 except FileNotFoundError as e:
     logging.error(f"Erreur : Le fichier {excel_file_path} est introuvable. {e}")
     exit(1)
@@ -39,14 +39,14 @@ except ValueError as e:
     exit(1)
 
 # Vérifier les colonnes nécessaires
-required_columns = ['Task', 'Start', 'Duration', 'Predecessor']
+required_columns = ['Task ID', 'Task', 'Start', 'Duration', 'Predecessor']
 for col in required_columns:
     if col not in df.columns:
         logging.error(f"Erreur : La colonne '{col}' est manquante dans le fichier Excel.")
         exit(1)
 
 # Filtrer les lignes qui sont entièrement remplies et qui ont plus que seulement le numéro de tâche
-df = df.dropna(how='any', subset=['Task', 'Start', 'Duration'])
+df = df.dropna(how='any', subset=['Task ID', 'Task', 'Start', 'Duration'])
 df = df[df[['Task', 'Start', 'Duration']].notna().all(axis=1)]
 
 # Supprimer les lignes où seules les colonnes 'Task ID' sont remplies
@@ -63,6 +63,11 @@ print(f"Nombre de tâches et jalons valides trouvés : {total_valid_tasks}")
 working_hours_per_day = 8
 weekend_days = [5, 6]  # Samedi, Dimanche
 current_year = datetime.now().year
+
+# Utiliser openpyxl pour lire le titre du planning dans la cellule J2
+titre_graphe = pd.read_excel(excel_file_path, engine='openpyxl', sheet_name='Planning').iloc[0, 9]
+
+print('Préparation du diagramme de Gantt :', titre_graphe)
 
 # Essayer d'obtenir les jours fériés pour la France
 try:
@@ -120,7 +125,7 @@ for index, row in df.iterrows():
                 df.at[index, 'End'] = calculate_end_date(predecessor_end, row['Duration'])
 
 # Mettre à jour les dates de début dans le fichier Excel
-df.to_excel(excel_file_path, index=False)
+df.to_excel(excel_file_path, sheet_name='Planning', index=False)
 
 # Trier les tâches et jalons en fonction de la date de début
 milestones = df[df['Duration'] == 0].sort_values(by='Start')
@@ -187,7 +192,7 @@ ax.legend(handles=legend_elements, loc='upper right')
 
 # Ajouter des labels
 ax.set_xlabel('Dates')
-ax.set_title('Diagramme de Gantt avec Prédécesseurs et Jours Ouvrés')
+ax.set_title(titre_graphe )
 
 plt.tight_layout()
 
